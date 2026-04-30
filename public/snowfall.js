@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "https://unpkg.com/three@0.164.1/build/three.module.js";
 
 // Create leaf snowfall effect that integrates with existing scene and camera
 export function createLeafSnowfall(scene, camera, count = 50) {
