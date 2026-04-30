@@ -142,25 +142,57 @@ async function uploadImage() {
     return;
   }
 
-  const token = await user.getIdToken(true);
-
   const file = fileInput.files[0];
+  if (!file) {
+    alert("Please select an image first!");
+    return;
+  }
+
+  const token = await user.getIdToken(true);
   const formData = new FormData();
   formData.append("image", file);
 
   result.innerText = "Processing...";
 
   const API_URL = "https://plant-disease-backend-f3cm.onrender.com";
-  const res = await fetch(`${API_URL}/predict`, {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer " + token
-    },
-    body: formData
-  });
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-  const data = await res.json();
-  result.innerText = data.message;
+    const res = await fetch(`${API_URL}/predict`, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token
+      },
+      body: formData,
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    let data = null;
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      data = { error: text };
+    }
+
+    if (!res.ok) {
+      result.innerText = "Error: " + (data?.error || data?.message || "Request failed");
+      return;
+    }
+
+    result.innerText = data?.message || "Done.";
+  } catch (err) {
+    if (err?.name === "AbortError") {
+      result.innerText = "Error: Request timed out. Please try again.";
+      return;
+    }
+    result.innerText = "Error: Failed to fetch. Check internet/CORS and try again.";
+    console.error(err);
+  }
 }
 </script>
 
