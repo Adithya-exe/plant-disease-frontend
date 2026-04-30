@@ -46,11 +46,16 @@ const provider = new firebase.auth.GoogleAuthProvider();
 /* 🔐 LOGIN */
 window.login = async function () {
   try {
-    await auth.signInWithPopup(provider);
+    await auth.signInWithRedirect(provider);
   } catch (err) {
     alert("Login failed");
   }
 };
+
+/* 🔐 COMPLETE REDIRECT LOGIN (if any) */
+auth.getRedirectResult().catch((err) => {
+  console.error("Login redirect error:", err);
+});
 
 /* 🔐 ROUTE PROTECTION */
 window.goToUpload = function () {
@@ -74,10 +79,14 @@ auth.onAuthStateChanged((user) => {
   const btn = document.querySelectorAll(".path-btn")[0];
 
   if (user) {
+    user.getIdToken(true).then((token) => {
+      localStorage.setItem("token", token);
+    });
     btn.textContent = "Logged In";
     btn.disabled = true;
     btn.style.opacity = "0.6";
   } else {
+    localStorage.removeItem("token");
     btn.textContent = "Login / Register";
     btn.disabled = false;
   }
