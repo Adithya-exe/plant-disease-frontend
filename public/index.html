@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Plant Intelligence</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./index.css">
+</head>
+
+<body>
+
+<!-- 🌌 Welcome Overlay -->
+<div id="welcomePanel" class="welcome-overlay">
+  <div class="welcome-content">
+    <button id="closePanel" class="close-btn">✕</button>
+
+    <h1 class="title">Plant Intelligence</h1>
+    <p class="tagline">AI-powered plant disease detection</p>
+    <button id="startBtn" class="cta-btn">Get Started</button>
+  </div>
+</div>
+
+<!-- 🎮 Buttons -->
+<div id="path-buttons">
+  <button class="path-btn">Login / Register</button>
+  <button class="path-btn">Upload Image</button>
+  <button class="path-btn">Access Camera</button>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+<script>
+const firebaseConfig = {
+   apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
+  authDomain: "pdd-finalyear.firebaseapp.com",
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const provider = new firebase.auth.GoogleAuthProvider();
+
+/* 🔐 LOGIN */
+window.login = async function () {
+  try {
+    await auth.signInWithPopup(provider);
+  } catch (err) {
+    alert("Login failed");
+  }
+};
+
+/* 🔐 ROUTE PROTECTION */
+window.goToUpload = function () {
+  if (!auth.currentUser) {
+    alert("Please login first!");
+    return;
+  }
+  window.location.href = "/upload.html";
+};
+
+window.goToCamera = function () {
+  if (!auth.currentUser) {
+    alert("Please login first!");
+    return;
+  }
+  window.location.href = "/camera.html";
+};
+
+/* 🔐 UI STATE */
+auth.onAuthStateChanged((user) => {
+  const btn = document.querySelectorAll(".path-btn")[0];
+
+  if (user) {
+    btn.textContent = "Logged In";
+    btn.disabled = true;
+    btn.style.opacity = "0.6";
+  } else {
+    btn.textContent = "Login / Register";
+    btn.disabled = false;
+  }
+});
+</script>
+
+<script type="module" src="./main.js"></script>
+
+</body>
+</html>

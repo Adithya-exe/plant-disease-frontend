@@ -1,0 +1,168 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  background: black;
+}
+
+/* 🎮 CANVAS */
+canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* 🌌 OVERLAY */
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 12, 16, 0.7);
+  backdrop-filter: blur(18px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 999;
+
+  transition: all 0.8s ease;
+}
+
+/* 🎬 CONTENT */
+.welcome-content {
+  text-align: center;
+  color: white;
+  max-width: 600px;
+  padding: 20px;
+
+  transform: translateY(40px) scale(0.96);
+  opacity: 0;
+
+  animation: cinematicEntry 1.2s ease forwards;
+}
+
+/* 🎥 ENTRY */
+@keyframes cinematicEntry {
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* 🧠 TITLE */
+.title {
+  font-family: 'Playfair Display', serif;
+  font-size: 3rem;
+  letter-spacing: 1.2px;
+
+  background: linear-gradient(90deg, #ffffff, #c8ffd4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  text-shadow: 0 0 30px rgba(200,255,200,0.15);
+
+  margin-bottom: 15px;
+}
+
+/* ✨ TAGLINE */
+.tagline {
+  font-size: 1.2rem;
+  opacity: 0.85;
+  margin-bottom: 20px;
+}
+
+/* 📄 DESC */
+.desc {
+  font-size: 1rem;
+  line-height: 1.7;
+  opacity: 0.7;
+  margin-bottom: 35px;
+}
+
+/* 🚀 BUTTON */
+.cta-btn {
+  padding: 12px 32px;
+  border-radius: 30px;
+
+  border: 1px solid rgba(255,255,255,0.2);
+  background: transparent;
+  color: white;
+
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.cta-btn:hover {
+  background: white;
+  color: black;
+  transform: scale(1.05);
+}
+
+/* ❌ CLOSE */
+.close-btn {
+  position: absolute;
+  top: 40px;
+  right: 50px;
+  font-size: 20px;
+
+  color: white;
+  opacity: 0.6;
+
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.close-btn:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+/* 🎬 EXIT */
+.welcome-overlay.hide {
+  opacity: 0;
+  transform: translateY(-60px) scale(0.98);
+}
+
+/* 🎮 BUTTONS */
+.path-btn {
+  position: absolute;
+  padding: 14px 35px;
+
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+
+  border-radius: 25px;
+  border: 1px solid rgba(255,255,255,0.2);
+
+  background: rgba(255,255,255,0.05);
+  color: white;
+
+  backdrop-filter: blur(10px);
+
+  cursor: pointer;
+  z-index: 100;
+  transform: translate(-50%, -50%);
+
+  transition: 0.3s;
+}
+
+.path-btn:hover {
+  background: white;
+  color: black;
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.path-btn.hidden {
+  display: none;
+}

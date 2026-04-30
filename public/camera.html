@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Camera - PDD</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Inter", sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background: url("./models/Material_diffuse.jpeg") no-repeat center center/cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  position: relative;
+}
+
+/* Overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 20, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 0;
+}
+
+/* Container */
+.container {
+  position: relative;
+  z-index: 10;
+  backdrop-filter: blur(30px);
+  background: rgba(255,255,255,0.05);
+  border-radius: 24px;
+  padding: 30px;
+  width: 420px;
+  text-align: center;
+
+  max-height: 90vh;
+  overflow-y: auto;
+
+  box-shadow: 
+    0 20px 60px rgba(0,0,0,0.7),
+    0 0 40px rgba(0,255,200,0.08);
+}
+
+/* Video */
+video {
+  width: 100%;
+  border-radius: 18px;
+  margin-bottom: 15px;
+}
+
+/* Buttons */
+.btn {
+  padding: 12px 26px;
+  border-radius: 30px;
+  border: none;
+  cursor: pointer;
+  margin: 5px;
+  transition: 0.3s;
+}
+
+.capture {
+  background: linear-gradient(135deg, #ff7e5f, #ff9966);
+  color: white;
+}
+
+.predict {
+  background: linear-gradient(135deg, #00c9a7, #00f2c3);
+  color: black;
+}
+
+/* Preview */
+img {
+  width: 100%;
+  border-radius: 18px;
+  margin-top: 15px;
+  display: none;
+}
+
+/* Result */
+#result {
+  margin-top: 20px;
+  color: #00ffab;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>📷 Smart Camera</h2>
+
+  <video id="video" autoplay></video>
+
+  <div>
+    <button class="btn capture" onclick="capture()">Capture</button>
+    <button class="btn predict" onclick="predict()">Predict</button>
+  </div>
+
+  <canvas id="canvas" style="display:none;"></canvas>
+  <img id="preview">
+  <p id="result"></p>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
+  authDomain: "pdd-finalyear.firebaseapp.com",
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+/* 🔐 PROTECT PAGE */
+auth.onAuthStateChanged((user) => {
+  if (!user) {
+    alert("Login required");
+    window.location.href = "/";
+  }
+});
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const preview = document.getElementById("preview");
+const result = document.getElementById("result");
+
+/* Camera */
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => {
+    video.srcObject = stream;
+  })
+  .catch(err => {
+    alert("Camera access denied or not available");
+  });
+/* Capture */
+function capture() {
+  const ctx = canvas.getContext("2d");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  ctx.drawImage(video, 0, 0);
+
+  preview.src = canvas.toDataURL();
+  preview.style.display = "block";
+}
+
+/* Predict */
+async function predict() {
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert("Login required");
+    return;
+  }
+
+  if (!preview.src) {
+    alert("Please capture image first!");
+    return;
+  }
+
+  const token = await user.getIdToken(true);
+
+  const blob = await (await fetch(preview.src)).blob();
+
+  const formData = new FormData();
+  formData.append("image", blob, "capture.png");
+
+  result.innerText = "Processing...";
+
+  try {
+    const API_URL = "https://your-backend.onrender.com";
+
+    const res = await fetch(`${API_URL}/predict`, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token
+      },
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      result.innerText = "Error: " + (data.error || "Something went wrong");
+      return;
+    }
+
+    result.innerText = data.message;
+    result.scrollIntoView({ behavior: "smooth" });
+
+  } catch (err) {
+    result.innerText = "Server error";
+  }
+}
+</script>
+
+</body>
+</html> 
