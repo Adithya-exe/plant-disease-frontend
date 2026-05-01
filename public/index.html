@@ -43,6 +43,8 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const provider = new firebase.auth.GoogleAuthProvider();
 
+let currentUser = null;
+
 /* LOGIN */
 window.login = async function () {
   try {
@@ -53,14 +55,45 @@ window.login = async function () {
   }
 };
 
-/* Redirect completion */
-auth.getRedirectResult().catch((err) => {
-  console.error("Login redirect error:", err);
+/* Handle redirect result */
+auth.getRedirectResult()
+  .then(result => {
+    if (result.user) {
+      console.log("Login successful");
+    }
+  })
+  .catch(err => {
+    console.error("Redirect error:", err);
+  });
+
+/* AUTH STATE */
+auth.onAuthStateChanged(async (user) => {
+  const btn = document.querySelectorAll(".path-btn")[0];
+
+  if (user) {
+    currentUser = user;
+
+    const token = await user.getIdToken(true);
+    localStorage.setItem("token", token);
+
+    btn.textContent = "Logged In";
+    btn.disabled = true;
+    btn.style.opacity = "0.6";
+
+  } else {
+    currentUser = null;
+
+    localStorage.removeItem("token");
+
+    btn.textContent = "Login / Register";
+    btn.disabled = false;
+    btn.style.opacity = "1";
+  }
 });
 
 /* Navigation */
 window.goToUpload = function () {
-  if (!auth.currentUser) {
+  if (!currentUser) {
     alert("Please login first!");
     return;
   }
@@ -68,33 +101,14 @@ window.goToUpload = function () {
 };
 
 window.goToCamera = function () {
-  if (!auth.currentUser) {
+  if (!currentUser) {
     alert("Please login first!");
     return;
   }
   window.location.href = "/camera.html";
 };
-
-/* UI state */
-auth.onAuthStateChanged((user) => {
-  const btn = document.querySelectorAll(".path-btn")[0];
-
-  if (user) {
-    user.getIdToken(true).then(token => {
-      localStorage.setItem("token", token);
-    });
-
-    btn.textContent = "Logged In";
-    btn.disabled = true;
-    btn.style.opacity = "0.6";
-  } else {
-    localStorage.removeItem("token");
-    btn.textContent = "Login / Register";
-    btn.disabled = false;
-    btn.style.opacity = "1";
-  }
-});
 </script>
+
 
 <script type="importmap">
 {
