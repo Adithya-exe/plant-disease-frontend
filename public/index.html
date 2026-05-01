@@ -4,33 +4,28 @@
 <meta charset="UTF-8">
 <title>Plant Intelligence</title>
 
-<!-- ✅ LOAD YOUR CSS -->
-<link rel="stylesheet" href="index.css">
-
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./index.css">
 </head>
 
 <body>
 
-<!-- ✅ OVERLAY (fixed to match CSS class names) -->
+<!-- 🌌 Welcome Overlay --> 
 <div id="welcomePanel" class="welcome-overlay">
-  
-  <button id="closePanel" class="close-btn">✕</button>
-
   <div class="welcome-content">
+    <button id="closePanel" class="close-btn">✕</button>
+
     <h1 class="title">Plant Intelligence</h1>
     <p class="tagline">AI-powered plant disease detection</p>
-    <p class="desc">Detect plant diseases instantly using AI and computer vision.</p>
-    
     <button id="startBtn" class="cta-btn">Get Started</button>
   </div>
 </div>
 
-<!-- ✅ BUTTONS (no inline styling needed) -->
-<div>
-  <button class="path-btn" onclick="login()">Login / Register</button>
-  <button class="path-btn" onclick="goToUpload()">Upload Image</button>
-  <button class="path-btn" onclick="goToCamera()">Access Camera</button>
+<!-- 🎮 Buttons -->
+<div id="path-buttons">
+  <button class="path-btn">Login / Register</button>
+  <button class="path-btn">Upload Image</button>
+  <button class="path-btn">Access Camera</button>
 </div>
 
 <!-- Firebase -->
@@ -39,60 +34,75 @@
 
 <script>
 const firebaseConfig = {
-  apiKey: "YOUR_KEY",
+   apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
   authDomain: "pdd-finalyear.firebaseapp.com",
 };
 
 firebase.initializeApp(firebaseConfig);
+
 const auth = firebase.auth();
 const provider = new firebase.auth.GoogleAuthProvider();
 
-function getUser() {
-  return new Promise(resolve => {
-    const unsub = auth.onAuthStateChanged(user => {
-      unsub();
-      resolve(user);
-    });
-  });
-}
-
-// LOGIN
+/* 🔐 LOGIN */
 window.login = async function () {
-  await auth.signInWithRedirect(provider);
+  try {
+    await auth.signInWithRedirect(provider);
+  } catch (err) {
+    alert("Login failed");
+  }
 };
 
-// REDIRECT RESULT
-auth.getRedirectResult().catch(console.error);
+/* 🔐 COMPLETE REDIRECT LOGIN (if any) */
+auth.getRedirectResult().catch((err) => {
+  console.error("Login redirect error:", err);
+});
 
-// BUTTONS
-window.goToUpload = async function () {
-  const user = await getUser();
-  if (!user) return alert("Please login first");
+/* 🔐 ROUTE PROTECTION */
+window.goToUpload = function () {
+  if (!auth.currentUser) {
+    alert("Please login first!");
+    return;
+  }
   window.location.href = "/upload.html";
 };
 
-window.goToCamera = async function () {
-  const user = await getUser();
-  if (!user) return alert("Please login first");
+window.goToCamera = function () {
+  if (!auth.currentUser) {
+    alert("Please login first!");
+    return;
+  }
   window.location.href = "/camera.html";
 };
 
-// UI STATE
-auth.onAuthStateChanged(user => {
-  const btn = document.querySelector(".path-btn");
+/* 🔐 UI STATE */
+auth.onAuthStateChanged((user) => {
+  const btn = document.querySelectorAll(".path-btn")[0];
 
   if (user) {
+    user.getIdToken(true).then((token) => {
+      localStorage.setItem("token", token);
+    });
     btn.textContent = "Logged In";
     btn.disabled = true;
+    btn.style.opacity = "0.6";
   } else {
+    localStorage.removeItem("token");
     btn.textContent = "Login / Register";
     btn.disabled = false;
   }
 });
 </script>
 
-<!-- ✅ THREE.JS MAIN -->
-<script type="module" src="/main.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.164.1/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.164.1/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module" src="./main.js"></script>
 
 </body>
 </html>
