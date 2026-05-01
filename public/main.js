@@ -74,6 +74,7 @@ pathButtons.forEach((btn, i) => {
   btn.textContent = paths[i].label;
 
   btn.addEventListener('click', async () => {
+    const firebaseUser = (window.firebase && window.firebase.auth) ? window.firebase.auth().currentUser : null;
 
     // ❌ Block clicks if overlay is visible
     if (overlay && !overlay.classList.contains("hide")) {
@@ -82,7 +83,7 @@ pathButtons.forEach((btn, i) => {
 
     // LOGIN
     if (i === 0) {
-      if (!localStorage.getItem("token")) {
+      if (!firebaseUser) {
         await window.login();
         updateAuthButton();
       }
@@ -91,9 +92,7 @@ pathButtons.forEach((btn, i) => {
 
     // UPLOAD
     if (i === 1) {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
+      if (!firebaseUser) {
         alert("Please login first!");
         return;
       }
@@ -104,9 +103,7 @@ pathButtons.forEach((btn, i) => {
 
     // CAMERA
     if (i === 2) {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
+      if (!firebaseUser) {
         alert("Please login first!");
         return;
       }
