@@ -132,14 +132,27 @@ const remedyText = document.getElementById("remedyText");
 
 
 // ✅ FIXED AUTH HANDLING
-auth.onAuthStateChanged(user => {
+function waitForAuth() {
+  return new Promise(resolve => {
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      unsubscribe();
+      resolve(user);
+    });
+  });
+}
+
+// Run once when page loads
+(async () => {
+  const user = await waitForAuth();
+
   if (!user) {
     result.innerText = "Session expired. Redirecting...";
     setTimeout(() => {
       window.location.href = "/";
-    }, 2000);
+    }, 1500);
   }
-});
+})();
+
 
 
 fileInput.onchange = () => {
