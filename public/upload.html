@@ -77,6 +77,14 @@ button {
   margin-top: 20px;
   color: #00ffab;
 }
+
+/* NEW */
+#remedyBox {
+  margin-top: 15px;
+  background: rgba(0,255,170,0.1);
+  padding: 10px;
+  border-radius: 10px;
+}
 </style>
 </head>
 
@@ -92,7 +100,14 @@ button {
 
   <img id="preview">
   <button onclick="uploadImage()">Predict</button>
+
   <p id="result"></p>
+
+  <!-- NEW -->
+  <div id="remedyBox" style="display:none;">
+    <h4>🌱 Remedy</h4>
+    <p id="remedyText"></p>
+  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -100,7 +115,7 @@ button {
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
+  apiKey: "YOUR_API_KEY",
   authDomain: "pdd-finalyear.firebaseapp.com",
 };
 
@@ -108,7 +123,6 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 
 const API_URL = "https://web-production-d40b9e.up.railway.app";
-
 
 auth.onAuthStateChanged(user => {
   if (!user) {
@@ -120,6 +134,8 @@ auth.onAuthStateChanged(user => {
 const fileInput = document.getElementById("imageInput");
 const preview = document.getElementById("preview");
 const result = document.getElementById("result");
+const remedyBox = document.getElementById("remedyBox");
+const remedyText = document.getElementById("remedyText");
 
 fileInput.onchange = () => {
   if (!fileInput.files[0]) return;
@@ -154,9 +170,7 @@ async function compressImage(file) {
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, w, h);
 
-      canvas.toBlob(blob => {
-        resolve(blob);
-      }, "image/jpeg", 0.8);
+      canvas.toBlob(blob => resolve(blob), "image/jpeg", 0.8);
     };
 
     reader.readAsDataURL(file);
@@ -166,18 +180,13 @@ async function compressImage(file) {
 async function uploadImage() {
   const user = auth.currentUser;
 
-  if (!user) {
-    alert("Login required");
-    return;
-  }
+  if (!user) return alert("Login required");
 
   const file = fileInput.files[0];
-  if (!file) {
-    alert("Please select image first");
-    return;
-  }
+  if (!file) return alert("Please select image");
 
   result.innerText = "Waking server...";
+  remedyBox.style.display = "none";
 
   try {
     await fetch(`${API_URL}/warmup`);
@@ -190,19 +199,11 @@ async function uploadImage() {
     const formData = new FormData();
     formData.append("image", compressed, "image.jpg");
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000);
-
     const res = await fetch(`${API_URL}/predict`, {
       method: "POST",
-      headers: {
-        Authorization: "Bearer " + token
-      },
-      body: formData,
-      signal: controller.signal
+      headers: { Authorization: "Bearer " + token },
+      body: formData
     });
-
-    clearTimeout(timeout);
 
     const data = await res.json();
 
@@ -213,12 +214,11 @@ async function uploadImage() {
 
     result.innerText = data.message;
 
-  } catch (err) {
-    if (err.name === "AbortError") {
-      result.innerText = "Request timeout. Try again.";
-      return;
-    }
+    // NEW
+    remedyText.innerText = data.remedy;
+    remedyBox.style.display = "block";
 
+  } catch (err) {
     result.innerText = "Server error";
     console.error(err);
   }

@@ -78,6 +78,14 @@ img {
   margin-top: 20px;
   color: #00ffab;
 }
+
+/* NEW */
+#remedyBox {
+  margin-top: 15px;
+  background: rgba(0,255,170,0.1);
+  padding: 12px;
+  border-radius: 12px;
+}
 </style>
 </head>
 
@@ -95,7 +103,14 @@ img {
 
   <canvas id="canvas" style="display:none;"></canvas>
   <img id="preview">
+
   <p id="result"></p>
+
+  <!-- NEW REMEDY SECTION -->
+  <div id="remedyBox" style="display:none;">
+    <h4>🌱 Remedy</h4>
+    <p id="remedyText"></p>
+  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -103,14 +118,14 @@ img {
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
+  apiKey: "YOUR_API_KEY",
   authDomain: "pdd-finalyear.firebaseapp.com",
 };
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
-const API_URL = "https://web-production-d40b9e.up.railway.app";
 
+const API_URL = "https://web-production-d40b9e.up.railway.app";
 
 auth.onAuthStateChanged(user => {
   if (!user) {
@@ -123,6 +138,10 @@ const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const preview = document.getElementById("preview");
 const result = document.getElementById("result");
+
+/* NEW */
+const remedyBox = document.getElementById("remedyBox");
+const remedyText = document.getElementById("remedyText");
 
 navigator.mediaDevices.getUserMedia({ video: true })
   .then(stream => video.srcObject = stream)
@@ -154,6 +173,8 @@ async function predict() {
 
   try {
     result.innerText = "Waking server...";
+    remedyBox.style.display = "none";
+
     await fetch(`${API_URL}/warmup`);
 
     result.innerText = "Processing...";
@@ -186,6 +207,10 @@ async function predict() {
     }
 
     result.innerText = data.message;
+
+    /* NEW */
+    remedyText.innerText = data.remedy;
+    remedyBox.style.display = "block";
 
   } catch (err) {
     if (err.name === "AbortError") {
