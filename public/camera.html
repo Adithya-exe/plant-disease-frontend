@@ -4,87 +4,40 @@
 <meta charset="UTF-8">
 <title>Camera - PDD</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
 <style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Inter", sans-serif;
-}
-
 body {
-  min-height: 100vh;
-  background: url("./models/Material_diffuse.jpeg") no-repeat center center/cover;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  position: relative;
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: rgba(10, 15, 20, 0.75);
-  backdrop-filter: blur(8px);
-  z-index: 0;
+  margin:0;
+  font-family: Inter;
+  background:#111;
+  color:white;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
 }
 
 .container {
-  position: relative;
-  z-index: 10;
-  backdrop-filter: blur(30px);
-  background: rgba(255,255,255,0.05);
-  border-radius: 24px;
-  padding: 30px;
-  width: 420px;
-  text-align: center;
-  max-height: 90vh;
-  overflow-y: auto;
+  width:400px;
+  padding:20px;
+  background:#222;
+  border-radius:20px;
+  text-align:center;
 }
 
 video, img {
-  width: 100%;
-  border-radius: 18px;
-  margin-top: 15px;
+  width:100%;
+  border-radius:10px;
+  margin-top:10px;
 }
 
-img {
-  display: none;
-}
-
-.btn {
-  padding: 12px 26px;
-  border-radius: 30px;
-  border: none;
-  cursor: pointer;
-  margin: 5px;
-}
-
-.capture {
-  background: linear-gradient(135deg, #ff7e5f, #ff9966);
-  color: white;
-}
-
-.predict {
-  background: linear-gradient(135deg, #00c9a7, #00f2c3);
-  color: black;
-}
-
-#result {
-  margin-top: 20px;
-  color: #00ffab;
-}
-
-/* NEW */
-#remedyBox {
-  margin-top: 15px;
-  background: rgba(0,255,170,0.1);
-  padding: 12px;
-  border-radius: 12px;
+button {
+  margin:5px;
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  cursor:pointer;
 }
 </style>
 </head>
@@ -92,25 +45,17 @@ img {
 <body>
 
 <div class="container">
-  <h2>📷 Smart Camera</h2>
+  <h2>Camera</h2>
 
   <video id="video" autoplay></video>
 
-  <div>
-    <button class="btn capture" onclick="capture()">Capture</button>
-    <button class="btn predict" onclick="predict()">Predict</button>
-  </div>
+  <button onclick="capture()">Capture</button>
+  <button onclick="predict()">Predict</button>
 
   <canvas id="canvas" style="display:none;"></canvas>
   <img id="preview">
 
   <p id="result"></p>
-
-  <!-- NEW REMEDY SECTION -->
-  <div id="remedyBox" style="display:none;">
-    <h4>🌱 Remedy</h4>
-    <p id="remedyText"></p>
-  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -118,7 +63,7 @@ img {
 
 <script>
 const firebaseConfig = {
-   apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
+  apiKey: "YOUR_KEY",
   authDomain: "pdd-finalyear.firebaseapp.com",
 };
 
@@ -127,100 +72,52 @@ const auth = firebase.auth();
 
 const API_URL = "https://web-production-d40b9e.up.railway.app";
 
+/* AUTH GUARD */
+function waitForAuth() {
+  return new Promise(resolve => {
+    const unsub = auth.onAuthStateChanged(user => {
+      unsub();
+      resolve(user);
+    });
+  });
+}
+
 auth.onAuthStateChanged(user => {
-  if (!user) {
-    alert("Login required");
-    window.location.href = "/";
-  }
+  if (!user) window.location.href = "/";
 });
 
-const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
-const preview = document.getElementById("preview");
-const result = document.getElementById("result");
-
-/* NEW */
-const remedyBox = document.getElementById("remedyBox");
-const remedyText = document.getElementById("remedyText");
-
+/* CAMERA */
 navigator.mediaDevices.getUserMedia({ video: true })
-  .then(stream => video.srcObject = stream)
-  .catch(() => alert("Camera access denied"));
+  .then(stream => video.srcObject = stream);
 
 function capture() {
   const ctx = canvas.getContext("2d");
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-
   ctx.drawImage(video, 0, 0);
-
-  preview.src = canvas.toDataURL("image/jpeg", 0.8);
+  preview.src = canvas.toDataURL("image/jpeg");
   preview.style.display = "block";
 }
 
 async function predict() {
-  const user = auth.currentUser;
+  const user = await waitForAuth();
+  if (!user) return;
 
-  if (!user) {
-    alert("Login required");
-    return;
-  }
+  const blob = await (await fetch(preview.src)).blob();
 
-  if (!preview.src) {
-    alert("Capture image first");
-    return;
-  }
+  const formData = new FormData();
+  formData.append("image", blob, "img.jpg");
 
-  try {
-    result.innerText = "Waking server...";
-    remedyBox.style.display = "none";
+  const token = await user.getIdToken();
 
-    await fetch(`${API_URL}/warmup`);
+  const res = await fetch(`${API_URL}/predict`, {
+    method: "POST",
+    headers: { Authorization: "Bearer " + token },
+    body: formData
+  });
 
-    result.innerText = "Processing...";
-
-    const token = await user.getIdToken(true);
-    const blob = await (await fetch(preview.src)).blob();
-
-    const formData = new FormData();
-    formData.append("image", blob, "capture.jpg");
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000);
-
-    const res = await fetch(`${API_URL}/predict`, {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + token
-      },
-      body: formData,
-      signal: controller.signal
-    });
-
-    clearTimeout(timeout);
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      result.innerText = "Error: " + (data.error || "Failed");
-      return;
-    }
-
-    result.innerText = data.message;
-
-    /* NEW */
-    remedyText.innerText = data.remedy;
-    remedyBox.style.display = "block";
-
-  } catch (err) {
-    if (err.name === "AbortError") {
-      result.innerText = "Request timeout";
-      return;
-    }
-
-    result.innerText = "Server error";
-    console.error(err);
-  }
+  const data = await res.json();
+  document.getElementById("result").innerText = data.message;
 }
 </script>
 
