@@ -4,52 +4,36 @@
 <meta charset="UTF-8">
 <title>Plant Intelligence</title>
 
+<!-- ✅ LOAD YOUR CSS -->
+<link rel="stylesheet" href="index.css">
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-
-<style>
-body { font-family: Inter, sans-serif; margin:0; background:#111; color:white; text-align:center; }
-
-#welcomePanel {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.8);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.welcome-content {
-  background:#222;
-  padding:30px;
-  border-radius:20px;
-}
-
-button {
-  padding:10px 20px;
-  margin:10px;
-  border-radius:20px;
-  border:none;
-  cursor:pointer;
-}
-</style>
 </head>
 
 <body>
 
-<div id="welcomePanel">
+<!-- ✅ OVERLAY (fixed to match CSS class names) -->
+<div id="welcomePanel" class="welcome-overlay">
+  
+  <button id="closePanel" class="close-btn">✕</button>
+
   <div class="welcome-content">
-    <h1>Plant Intelligence</h1>
-    <p>AI-powered plant disease detection</p>
-    <button id="startBtn">Get Started</button>
+    <h1 class="title">Plant Intelligence</h1>
+    <p class="tagline">AI-powered plant disease detection</p>
+    <p class="desc">Detect plant diseases instantly using AI and computer vision.</p>
+    
+    <button id="startBtn" class="cta-btn">Get Started</button>
   </div>
 </div>
 
+<!-- ✅ BUTTONS (no inline styling needed) -->
 <div>
   <button class="path-btn" onclick="login()">Login / Register</button>
   <button class="path-btn" onclick="goToUpload()">Upload Image</button>
   <button class="path-btn" onclick="goToCamera()">Access Camera</button>
 </div>
 
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
@@ -106,6 +90,9 @@ auth.onAuthStateChanged(user => {
   }
 });
 </script>
+
+<!-- ✅ THREE.JS MAIN -->
+<script type="module" src="/main.js"></script>
 
 </body>
 </html>
