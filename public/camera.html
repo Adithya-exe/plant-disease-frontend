@@ -8,7 +8,7 @@
 
 <style>
 * {
-  margin: 0; 
+  margin: 0;
   padding: 0;
   box-sizing: border-box;
   font-family: "Inter", sans-serif;
@@ -24,7 +24,6 @@ body {
   position: relative;
 }
 
-/* Overlay */
 body::after {
   content: "";
   position: fixed;
@@ -34,7 +33,6 @@ body::after {
   z-index: 0;
 }
 
-/* Container */
 .container {
   position: relative;
   z-index: 10;
@@ -44,30 +42,26 @@ body::after {
   padding: 30px;
   width: 420px;
   text-align: center;
-
   max-height: 90vh;
   overflow-y: auto;
-
-  box-shadow: 
-    0 20px 60px rgba(0,0,0,0.7),
-    0 0 40px rgba(0,255,200,0.08);
 }
 
-/* Video */
-video {
+video, img {
   width: 100%;
   border-radius: 18px;
-  margin-bottom: 15px;
+  margin-top: 15px;
 }
 
-/* Buttons */
+img {
+  display: none;
+}
+
 .btn {
   padding: 12px 26px;
   border-radius: 30px;
   border: none;
   cursor: pointer;
   margin: 5px;
-  transition: 0.3s;
 }
 
 .capture {
@@ -80,15 +74,6 @@ video {
   color: black;
 }
 
-/* Preview */
-img {
-  width: 100%;
-  border-radius: 18px;
-  margin-top: 15px;
-  display: none;
-}
-
-/* Result */
 #result {
   margin-top: 20px;
   color: #00ffab;
@@ -124,9 +109,9 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
+const API_URL = "https://plant-disease-backend-f3cm.onrender.com";
 
-/* 🔐 PROTECT PAGE */
-auth.onAuthStateChanged((user) => {
+auth.onAuthStateChanged(user => {
   if (!user) {
     alert("Login required");
     window.location.href = "/";
@@ -138,15 +123,10 @@ const canvas = document.getElementById("canvas");
 const preview = document.getElementById("preview");
 const result = document.getElementById("result");
 
-/* Camera */
 navigator.mediaDevices.getUserMedia({ video: true })
-  .then(stream => {
-    video.srcObject = stream;
-  })
-  .catch(err => {
-    alert("Camera access denied or not available");
-  });
-/* Capture */
+  .then(stream => video.srcObject = stream)
+  .catch(() => alert("Camera access denied"));
+
 function capture() {
   const ctx = canvas.getContext("2d");
   canvas.width = video.videoWidth;
@@ -154,11 +134,10 @@ function capture() {
 
   ctx.drawImage(video, 0, 0);
 
-  preview.src = canvas.toDataURL();
+  preview.src = canvas.toDataURL("image/jpeg", 0.8);
   preview.style.display = "block";
 }
 
-/* Predict */
 async function predict() {
   const user = auth.currentUser;
 
@@ -168,45 +147,56 @@ async function predict() {
   }
 
   if (!preview.src) {
-    alert("Please capture image first!");
+    alert("Capture image first");
     return;
   }
 
-  const token = await user.getIdToken(true);
-
-  const blob = await (await fetch(preview.src)).blob();
-
-  const formData = new FormData();
-  formData.append("image", blob, "capture.png");
-
-  result.innerText = "Processing...";
-
   try {
-    const API_URL = "https://plant-disease-backend-f3cm.onrender.com";
+    result.innerText = "Waking server...";
+    await fetch(`${API_URL}/warmup`);
+
+    result.innerText = "Processing...";
+
+    const token = await user.getIdToken(true);
+    const blob = await (await fetch(preview.src)).blob();
+
+    const formData = new FormData();
+    formData.append("image", blob, "capture.jpg");
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
 
     const res = await fetch(`${API_URL}/predict`, {
       method: "POST",
       headers: {
         Authorization: "Bearer " + token
       },
-      body: formData
+      body: formData,
+      signal: controller.signal
     });
+
+    clearTimeout(timeout);
 
     const data = await res.json();
 
     if (!res.ok) {
-      result.innerText = "Error: " + (data.error || "Something went wrong");
+      result.innerText = "Error: " + (data.error || "Failed");
       return;
     }
 
     result.innerText = data.message;
-    result.scrollIntoView({ behavior: "smooth" });
 
   } catch (err) {
+    if (err.name === "AbortError") {
+      result.innerText = "Request timeout";
+      return;
+    }
+
     result.innerText = "Server error";
+    console.error(err);
   }
 }
 </script>
 
 </body>
-</html> 
+</html>

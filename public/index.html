@@ -10,7 +10,7 @@
 
 <body>
 
-<!-- 🌌 Welcome Overlay --> 
+<!-- Welcome Overlay -->
 <div id="welcomePanel" class="welcome-overlay">
   <div class="welcome-content">
     <button id="closePanel" class="close-btn">✕</button>
@@ -21,11 +21,11 @@
   </div>
 </div>
 
-<!-- 🎮 Buttons -->
+<!-- Buttons -->
 <div id="path-buttons">
-  <button class="path-btn">Login / Register</button>
-  <button class="path-btn">Upload Image</button>
-  <button class="path-btn">Access Camera</button>
+  <button class="path-btn" onclick="login()">Login / Register</button>
+  <button class="path-btn" onclick="goToUpload()">Upload Image</button>
+  <button class="path-btn" onclick="goToCamera()">Access Camera</button>
 </div>
 
 <!-- Firebase -->
@@ -34,7 +34,7 @@
 
 <script>
 const firebaseConfig = {
-   apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
+  apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
   authDomain: "pdd-finalyear.firebaseapp.com",
 };
 
@@ -43,21 +43,22 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const provider = new firebase.auth.GoogleAuthProvider();
 
-/* 🔐 LOGIN */
+/* LOGIN */
 window.login = async function () {
   try {
     await auth.signInWithRedirect(provider);
   } catch (err) {
     alert("Login failed");
+    console.error(err);
   }
 };
 
-/* 🔐 COMPLETE REDIRECT LOGIN (if any) */
+/* Redirect completion */
 auth.getRedirectResult().catch((err) => {
   console.error("Login redirect error:", err);
 });
 
-/* 🔐 ROUTE PROTECTION */
+/* Navigation */
 window.goToUpload = function () {
   if (!auth.currentUser) {
     alert("Please login first!");
@@ -74,14 +75,15 @@ window.goToCamera = function () {
   window.location.href = "/camera.html";
 };
 
-/* 🔐 UI STATE */
+/* UI state */
 auth.onAuthStateChanged((user) => {
   const btn = document.querySelectorAll(".path-btn")[0];
 
   if (user) {
-    user.getIdToken(true).then((token) => {
+    user.getIdToken(true).then(token => {
       localStorage.setItem("token", token);
     });
+
     btn.textContent = "Logged In";
     btn.disabled = true;
     btn.style.opacity = "0.6";
@@ -89,6 +91,7 @@ auth.onAuthStateChanged((user) => {
     localStorage.removeItem("token");
     btn.textContent = "Login / Register";
     btn.disabled = false;
+    btn.style.opacity = "1";
   }
 });
 </script>

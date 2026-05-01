@@ -8,9 +8,9 @@
 
 <style>
 * {
-  margin: 0; 
+  margin: 0;
   padding: 0;
-  box-sizing: border-box; 
+  box-sizing: border-box;
   font-family: "Inter", sans-serif;
 }
 
@@ -23,7 +23,6 @@ body {
   color: #fff;
 }
 
-/* Overlay */
 body::after {
   content: "";
   position: fixed;
@@ -33,7 +32,6 @@ body::after {
   z-index: 0;
 }
 
-/* Container */
 .container {
   position: relative;
   z-index: 10;
@@ -45,7 +43,6 @@ body::after {
   text-align: center;
 }
 
-/* Upload button */
 .upload-btn {
   display: inline-block;
   padding: 12px 25px;
@@ -59,7 +56,6 @@ input[type="file"] {
   display: none;
 }
 
-/* Image */
 img {
   width: 100%;
   border-radius: 18px;
@@ -67,7 +63,6 @@ img {
   display: none;
 }
 
-/* Button */
 button {
   margin-top: 15px;
   padding: 12px 25px;
@@ -78,7 +73,6 @@ button {
   cursor: pointer;
 }
 
-/* Result */
 #result {
   margin-top: 20px;
   color: #00ffab;
@@ -93,13 +87,11 @@ button {
 
   <label class="upload-btn">
     Select Image
-    <input type="file" id="imageInput">
+    <input type="file" id="imageInput" accept="image/*">
   </label>
 
   <img id="preview">
-
   <button onclick="uploadImage()">Predict</button>
-
   <p id="result"></p>
 </div>
 
@@ -115,8 +107,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 
-/* Protect page */
-auth.onAuthStateChanged((user) => {
+const API_URL = "https://plant-disease-backend-f3cm.onrender.com";
+
+auth.onAuthStateChanged(user => {
   if (!user) {
     alert("Login required");
     window.location.href = "/";
@@ -127,13 +120,48 @@ const fileInput = document.getElementById("imageInput");
 const preview = document.getElementById("preview");
 const result = document.getElementById("result");
 
-/* Preview */
 fileInput.onchange = () => {
+  if (!fileInput.files[0]) return;
   preview.src = URL.createObjectURL(fileInput.files[0]);
   preview.style.display = "block";
 };
 
-/* Upload */
+async function compressImage(file) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const canvas = document.createElement("canvas");
+    const reader = new FileReader();
+
+    reader.onload = e => img.src = e.target.result;
+
+    img.onload = () => {
+      const MAX = 512;
+      let w = img.width;
+      let h = img.height;
+
+      if (w > h && w > MAX) {
+        h *= MAX / w;
+        w = MAX;
+      } else if (h > MAX) {
+        w *= MAX / h;
+        h = MAX;
+      }
+
+      canvas.width = w;
+      canvas.height = h;
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+
+      canvas.toBlob(blob => {
+        resolve(blob);
+      }, "image/jpeg", 0.8);
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
 async function uploadImage() {
   const user = auth.currentUser;
 
@@ -144,20 +172,25 @@ async function uploadImage() {
 
   const file = fileInput.files[0];
   if (!file) {
-    alert("Please select an image first!");
+    alert("Please select image first");
     return;
   }
 
-  const token = await user.getIdToken(true);
-  const formData = new FormData();
-  formData.append("image", file);
+  result.innerText = "Waking server...";
 
-  result.innerText = "Processing...";
-
-  const API_URL = "https://plant-disease-backend-f3cm.onrender.com";
   try {
+    await fetch(`${API_URL}/warmup`);
+
+    result.innerText = "Processing...";
+
+    const token = await user.getIdToken(true);
+    const compressed = await compressImage(file);
+
+    const formData = new FormData();
+    formData.append("image", compressed, "image.jpg");
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeout = setTimeout(() => controller.abort(), 120000);
 
     const res = await fetch(`${API_URL}/predict`, {
       method: "POST",
@@ -168,29 +201,24 @@ async function uploadImage() {
       signal: controller.signal
     });
 
-    clearTimeout(timeoutId);
+    clearTimeout(timeout);
 
-    let data = null;
-    const contentType = res.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      data = await res.json();
-    } else {
-      const text = await res.text();
-      data = { error: text };
-    }
+    const data = await res.json();
 
     if (!res.ok) {
-      result.innerText = "Error: " + (data?.error || data?.message || "Request failed");
+      result.innerText = "Error: " + (data.error || "Failed");
       return;
     }
 
-    result.innerText = data?.message || "Done.";
+    result.innerText = data.message;
+
   } catch (err) {
-    if (err?.name === "AbortError") {
-      result.innerText = "Error: Request timed out. Please try again.";
+    if (err.name === "AbortError") {
+      result.innerText = "Request timeout. Try again.";
       return;
     }
-    result.innerText = "Error: Failed to fetch. Check internet/CORS and try again.";
+
+    result.innerText = "Server error";
     console.error(err);
   }
 }
