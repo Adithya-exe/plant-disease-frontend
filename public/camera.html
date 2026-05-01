@@ -118,7 +118,7 @@ img {
 
 <script>
 const firebaseConfig = {
-   apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
+  apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
   authDomain: "pdd-finalyear.firebaseapp.com",
 };
 
@@ -127,28 +127,38 @@ const auth = firebase.auth();
 
 const API_URL = "https://web-production-d40b9e.up.railway.app";
 
-auth.onAuthStateChanged(user => {
-  if (!user) {
-    alert("Login required");
-    window.location.href = "/";
-  }
-});
-
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const preview = document.getElementById("preview");
 const result = document.getElementById("result");
 
-/* NEW */
 const remedyBox = document.getElementById("remedyBox");
 const remedyText = document.getElementById("remedyText");
 
+
+// ✅ FIXED AUTH HANDLING
+auth.onAuthStateChanged(user => {
+  if (!user) {
+    result.innerText = "Session expired. Redirecting...";
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 2000);
+  }
+});
+
+
+// CAMERA
 navigator.mediaDevices.getUserMedia({ video: true })
   .then(stream => video.srcObject = stream)
-  .catch(() => alert("Camera access denied"));
+  .catch(() => {
+    result.innerText = "Camera access denied";
+  });
 
+
+// CAPTURE IMAGE
 function capture() {
   const ctx = canvas.getContext("2d");
+
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
@@ -158,16 +168,18 @@ function capture() {
   preview.style.display = "block";
 }
 
+
+// PREDICT
 async function predict() {
   const user = auth.currentUser;
 
   if (!user) {
-    alert("Login required");
+    result.innerText = "Please login first";
     return;
   }
 
   if (!preview.src) {
-    alert("Capture image first");
+    result.innerText = "Capture image first";
     return;
   }
 
@@ -179,7 +191,9 @@ async function predict() {
 
     result.innerText = "Processing...";
 
-    const token = await user.getIdToken(true);
+    // ✅ FIX: normal token (no forced refresh)
+    const token = await user.getIdToken();
+
     const blob = await (await fetch(preview.src)).blob();
 
     const formData = new FormData();
@@ -208,9 +222,13 @@ async function predict() {
 
     result.innerText = data.message;
 
-    /* NEW */
-    remedyText.innerText = data.remedy;
-    remedyBox.style.display = "block";
+    // ✅ SAFE REMEDY DISPLAY
+    if (data.remedy) {
+      remedyText.innerText = data.remedy;
+      remedyBox.style.display = "block";
+    } else {
+      remedyBox.style.display = "none";
+    }
 
   } catch (err) {
     if (err.name === "AbortError") {
@@ -223,6 +241,7 @@ async function predict() {
   }
 }
 </script>
+
 
 </body>
 </html>

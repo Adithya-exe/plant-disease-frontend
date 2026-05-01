@@ -115,7 +115,7 @@ button {
 
 <script>
 const firebaseConfig = {
-   apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
+  apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
   authDomain: "pdd-finalyear.firebaseapp.com",
 };
 
@@ -124,24 +124,30 @@ const auth = firebase.auth();
 
 const API_URL = "https://web-production-d40b9e.up.railway.app";
 
-auth.onAuthStateChanged(user => {
-  if (!user) {
-    alert("Login required");
-    window.location.href = "/";
-  }
-});
-
 const fileInput = document.getElementById("imageInput");
 const preview = document.getElementById("preview");
 const result = document.getElementById("result");
 const remedyBox = document.getElementById("remedyBox");
 const remedyText = document.getElementById("remedyText");
 
+
+// ✅ FIXED AUTH HANDLING
+auth.onAuthStateChanged(user => {
+  if (!user) {
+    result.innerText = "Session expired. Redirecting...";
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 2000);
+  }
+});
+
+
 fileInput.onchange = () => {
   if (!fileInput.files[0]) return;
   preview.src = URL.createObjectURL(fileInput.files[0]);
   preview.style.display = "block";
 };
+
 
 async function compressImage(file) {
   return new Promise(resolve => {
@@ -177,13 +183,20 @@ async function compressImage(file) {
   });
 }
 
+
 async function uploadImage() {
   const user = auth.currentUser;
 
-  if (!user) return alert("Login required");
+  if (!user) {
+    result.innerText = "Please login first";
+    return;
+  }
 
   const file = fileInput.files[0];
-  if (!file) return alert("Please select image");
+  if (!file) {
+    result.innerText = "Please select image";
+    return;
+  }
 
   result.innerText = "Waking server...";
   remedyBox.style.display = "none";
@@ -193,7 +206,9 @@ async function uploadImage() {
 
     result.innerText = "Processing...";
 
-    const token = await user.getIdToken(true);
+    // ✅ FIX: normal token
+    const token = await user.getIdToken();
+
     const compressed = await compressImage(file);
 
     const formData = new FormData();
@@ -201,7 +216,9 @@ async function uploadImage() {
 
     const res = await fetch(`${API_URL}/predict`, {
       method: "POST",
-      headers: { Authorization: "Bearer " + token },
+      headers: {
+        Authorization: "Bearer " + token
+      },
       body: formData
     });
 
@@ -214,9 +231,13 @@ async function uploadImage() {
 
     result.innerText = data.message;
 
-    // NEW
-    remedyText.innerText = data.remedy;
-    remedyBox.style.display = "block";
+    // ✅ SAFE REMEDY DISPLAY
+    if (data.remedy) {
+      remedyText.innerText = data.remedy;
+      remedyBox.style.display = "block";
+    } else {
+      remedyBox.style.display = "none";
+    }
 
   } catch (err) {
     result.innerText = "Server error";
@@ -224,6 +245,7 @@ async function uploadImage() {
   }
 }
 </script>
+
 
 </body>
 </html>
