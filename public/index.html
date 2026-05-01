@@ -5,120 +5,132 @@
 <title>Plant Intelligence</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-
-<style>
-body { font-family: Inter, sans-serif; margin:0; background:#111; color:white; text-align:center; }
-
-#welcomePanel {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.8);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.welcome-content {
-  background:#222;
-  padding:30px;
-  border-radius:20px;
-}
-
-button {
-  padding:10px 20px;
-  margin:10px;
-  border-radius:20px;
-  border:none;
-  cursor:pointer;
-}
-</style>
+<link rel="stylesheet" href="./index.css">
 </head>
 
 <body>
 
-<div id="welcomePanel">
+<!-- 🌌 Welcome Overlay --> 
+<div id="welcomePanel" class="welcome-overlay">
   <div class="welcome-content">
-    <h1>Plant Intelligence</h1>
-    <p>AI-powered plant disease detection</p>
-    <button id="startBtn">Get Started</button>
+    <button id="closePanel" class="close-btn">✕</button>
+
+    <h1 class="title">Plant Intelligence</h1>
+    <p class="tagline">AI-powered plant disease detection</p>
+    <button id="startBtn" class="cta-btn">Get Started</button>
   </div>
 </div>
 
-<div>
-  <button class="path-btn" id="loginBtn">Login / Register</button>
-  <button class="path-btn" id="uploadBtn">Upload Image</button>
-  <button class="path-btn" id="cameraBtn">Access Camera</button>
+<!-- 🎮 Buttons -->
+<div id="path-buttons">
+  <button class="path-btn">Login / Register</button>
+  <button class="path-btn">Upload Image</button>
+  <button class="path-btn">Access Camera</button>
 </div>
 
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
 <script>
 const firebaseConfig = {
-   apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
+    apiKey: "AIzaSyAQrpnA507fjwx320kDFy3owI7YBvyvHbU",
   authDomain: "pdd-finalyear.firebaseapp.com",
 };
 
-
 firebase.initializeApp(firebaseConfig);
+
 const auth = firebase.auth();
 const provider = new firebase.auth.GoogleAuthProvider();
 
-/* ================= AUTH ================= */
-function waitForAuth() {
-  return new Promise(resolve => {
-    const unsub = auth.onAuthStateChanged(user => {
-      unsub();
-      resolve(user);
-    });
-  });
-}
+/* 🔐 Make auth survive refresh/incognito better */
+(async () => {
+  try {
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  } catch (e) {
+    try {
+      await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+    } catch (_) {
+      // If persistence is unavailable, auth still may work for this tab.
+    }
+  }
+})();
 
-/* ================= LOGIN ================= */
+/* 🔐 LOGIN */
 window.login = async function () {
-  await auth.signInWithRedirect(provider);
+  try {
+    // Prefer popup to avoid redirect losing state in incognito.
+    try {
+      await auth.signInWithPopup(provider);
+      return;
+    } catch (popupErr) {
+      // Fallback: redirect when popup blocked/unsupported.
+      await auth.signInWithRedirect(provider);
+    }
+  } catch (err) {
+    alert("Login failed");
+  }
 };
 
-auth.getRedirectResult().catch(console.error);
+/* 🔐 COMPLETE REDIRECT LOGIN (if any) */
+(async () => {
+  try {
+    const result = await auth.getRedirectResult();
+    if (result && result.user) {
+      const token = await result.user.getIdToken(true);
+      localStorage.setItem("token", token);
+    }
+  } catch (err) {
+    console.error("Login redirect error:", err);
+  }
+})();
 
-/* ================= NAVIGATION ================= */
-async function goUpload() {
-  const user = await waitForAuth();
-  if (!user) return alert("Please login first");
+/* 🔐 ROUTE PROTECTION */
+window.goToUpload = function () {
+  if (!auth.currentUser) {
+    alert("Please login first!");
+    return;
+  }
   window.location.href = "/upload.html";
-}
+};
 
-async function goCamera() {
-  const user = await waitForAuth();
-  if (!user) return alert("Please login first");
+window.goToCamera = function () {
+  if (!auth.currentUser) {
+    alert("Please login first!");
+    return;
+  }
   window.location.href = "/camera.html";
-}
+};
 
-/* ================= EVENTS ================= */
-document.getElementById("loginBtn").onclick = login;
-document.getElementById("uploadBtn").onclick = goUpload;
-document.getElementById("cameraBtn").onclick = goCamera;
-
-/* ================= UI STATE ================= */
-auth.onAuthStateChanged(user => {
-  const btn = document.getElementById("loginBtn");
+/* 🔐 UI STATE */
+auth.onAuthStateChanged((user) => {
+  const btn = document.querySelectorAll(".path-btn")[0];
 
   if (user) {
+    user.getIdToken(true).then((token) => {
+      localStorage.setItem("token", token);
+    });
     btn.textContent = "Logged In";
     btn.disabled = true;
     btn.style.opacity = "0.6";
   } else {
+    localStorage.removeItem("token");
     btn.textContent = "Login / Register";
     btn.disabled = false;
-    btn.style.opacity = "1";
   }
 });
-
-/* overlay */
-document.getElementById("startBtn").onclick = () => {
-  document.getElementById("welcomePanel").style.display = "none";
-};
 </script>
 
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.164.1/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.164.1/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module" src="./main.js"></script>
+
 </body>
-</html>
+</html> 

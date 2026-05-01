@@ -7,39 +7,145 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
 <style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Inter", sans-serif;
+}
+
 body {
-  margin:0;
-  font-family: Inter;
-  background:#111;
-  color:white;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
+  min-height: 100vh;
+  background: url("./models/Material_diffuse.jpeg") no-repeat center center/cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  position: relative;
 }
 
+/* dark cinematic overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 20, 0.78);
+  backdrop-filter: blur(10px);
+  z-index: 0;
+}
+
+/* glass container */
 .container {
-  width:400px;
-  padding:20px;
-  background:#222;
-  border-radius:20px;
-  text-align:center;
+  position: relative;
+  z-index: 10;
+  width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+
+  padding: 30px;
+  text-align: center;
+
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(28px);
+  border-radius: 26px;
+
+  border: 1px solid rgba(0, 255, 170, 0.15);
+  box-shadow: 0 0 40px rgba(0, 255, 170, 0.08);
 }
 
-video, img {
-  width:100%;
-  border-radius:10px;
-  margin-top:10px;
+/* title */
+h2 {
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: #eafff6;
 }
 
-button {
-  margin:5px;
-  padding:10px;
-  border-radius:10px;
-  border:none;
-  cursor:pointer;
+/* preview media */
+img, video {
+  width: 100%;
+  border-radius: 18px;
+  margin-top: 15px;
+  border: 1px solid rgba(0,255,170,0.2);
+}
+
+/* file input hidden */
+input[type="file"] {
+  display: none;
+}
+
+/* 🌿 GREEN PRIMARY BUTTON (Upload / Capture) */
+.upload-btn, .capture-btn {
+  display: inline-block;
+  padding: 12px 26px;
+  margin: 8px;
+  border-radius: 30px;
+  cursor: pointer;
+
+  background: linear-gradient(135deg, #00c9a7, #00f2c3);
+  color: #041b16;
+
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.upload-btn:hover, .capture-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 18px rgba(0, 255, 170, 0.4);
+}
+
+/* 🌿 PREDICT BUTTON (slightly deeper green glow) */
+.predict-btn {
+  padding: 12px 26px;
+  margin: 8px;
+  border-radius: 30px;
+  border: none;
+  cursor: pointer;
+
+  background: linear-gradient(135deg, #00f2c3, #00c9a7);
+  color: #041b16;
+
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.predict-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 22px rgba(0, 255, 170, 0.55);
+}
+
+/* status text */
+#result {
+  margin-top: 18px;
+  color: #00ffab;
+  font-weight: 500;
+  min-height: 20px;
+}
+
+/* remedy box */
+#remedyBox {
+  margin-top: 15px;
+  padding: 12px;
+  border-radius: 14px;
+
+  background: rgba(0, 255, 170, 0.08);
+  border: 1px solid rgba(0, 255, 170, 0.2);
+
+  color: #bfffe8;
+  display: none;
+}
+
+/* scrollbar (optional polish) */
+.container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.container::-webkit-scrollbar-thumb {
+  background: rgba(0,255,170,0.3);
+  border-radius: 10px;
 }
 </style>
+
+
 </head>
 
 <body>
@@ -49,13 +155,15 @@ button {
 
   <video id="video" autoplay></video>
 
-  <button onclick="capture()">Capture</button>
-  <button onclick="predict()">Predict</button>
+  <button class="capture-btn" id="captureBtn" onclick="capture()">Capture</button>
+  <button class="predict-btn" id="predictBtn" onclick="predict()" disabled>Predict</button>
 
   <canvas id="canvas" style="display:none;"></canvas>
-  <img id="preview">
+  <img id="preview" style="display:none;">
 
   <p id="result"></p>
+
+  <div id="remedyBox"></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -72,6 +180,17 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 
 const API_URL = "https://web-production-d40b9e.up.railway.app";
+
+/* 🔐 Make auth survive refresh/incognito better */
+(async () => {
+  try {
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  } catch (e) {
+    try {
+      await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+    } catch (_) {}
+  }
+})();
 
 /* AUTH GUARD */
 function waitForAuth() {
@@ -98,11 +217,22 @@ function capture() {
   ctx.drawImage(video, 0, 0);
   preview.src = canvas.toDataURL("image/jpeg");
   preview.style.display = "block";
+
+  document.getElementById("predictBtn").disabled = false;
+  document.getElementById("result").innerText = "";
+  const remedyBox = document.getElementById("remedyBox");
+  remedyBox.style.display = "none";
+  remedyBox.innerText = "";
 }
 
 async function predict() {
   const user = await waitForAuth();
   if (!user) return;
+
+  if (!preview.src) {
+    alert("Please capture an image first.");
+    return;
+  }
 
   const blob = await (await fetch(preview.src)).blob();
 
@@ -111,14 +241,42 @@ async function predict() {
 
   const token = await user.getIdToken();
 
-  const res = await fetch(`${API_URL}/predict`, {
-    method: "POST",
-    headers: { Authorization: "Bearer " + token },
-    body: formData
-  });
+  const predictBtn = document.getElementById("predictBtn");
+  const resultEl = document.getElementById("result");
+  const remedyBox = document.getElementById("remedyBox");
 
-  const data = await res.json();
-  document.getElementById("result").innerText = data.message;
+  predictBtn.disabled = true;
+  resultEl.innerText = "Processing…";
+  remedyBox.style.display = "none";
+  remedyBox.innerText = "";
+
+  try {
+    const res = await fetch(`${API_URL}/predict`, {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token },
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      resultEl.innerText = data?.error ? `Error: ${data.error}` : "Prediction failed.";
+      return;
+    }
+
+    const confidence = typeof data.confidence === "number" ? data.confidence : null;
+    const confidenceText = confidence === null ? "" : `\nConfidence: ${confidence.toFixed(2)}%`;
+    resultEl.innerText = `${data.message ?? "Done."}${confidenceText}`;
+
+    if (data.remedy) {
+      remedyBox.style.display = "block";
+      remedyBox.innerText = data.remedy;
+    }
+  } catch (e) {
+    resultEl.innerText = "Network error. Please try again.";
+  } finally {
+    predictBtn.disabled = false;
+  }
 }
 </script>
 

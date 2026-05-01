@@ -122,9 +122,11 @@ pathButtons.forEach((btn, i) => {
 function updateAuthButton() {
   const loginBtn = pathButtons[0];
 
-  const token = localStorage.getItem("token");
+  const firebaseUser = (window.firebase && window.firebase.auth) ? window.firebase.auth().currentUser : null;
 
-  if (token) {
+  // Only treat as logged-in if Firebase has a current user.
+  // localStorage token can be stale (esp. after logout / incognito / redirect failures).
+  if (firebaseUser) {
     loginBtn.textContent = "Logged In";
     loginBtn.disabled = true;
     loginBtn.style.opacity = "0.6";
@@ -138,6 +140,41 @@ function updateAuthButton() {
 }
 
 updateAuthButton();
+
+// Keep auth button in sync with Firebase Auth state (redirect/popup/refresh)
+try {
+  if (window.firebase && window.firebase.auth) {
+    window.firebase.auth().onAuthStateChanged(async (user) => {
+      if (user) {
+        try {
+          const token = await user.getIdToken(true);
+          localStorage.setItem("token", token);
+        } catch (_) {}
+      } else {
+        localStorage.removeItem("token");
+      }
+      updateAuthButton();
+    });
+  }
+} catch (_) {}
+
+// Extra safety: if there's a token but Firebase user is missing, revert UI.
+// This covers "mismatch" cases where token is stale but UI would otherwise be wrong.
+function enforceNoMismatch() {
+  try {
+    const hasToken = !!localStorage.getItem("token");
+    const firebaseUser = (window.firebase && window.firebase.auth) ? window.firebase.auth().currentUser : null;
+    if (hasToken && !firebaseUser) {
+      localStorage.removeItem("token");
+      updateAuthButton();
+    }
+  } catch (_) {}
+}
+
+// Run once soon after load (gives Firebase a moment to initialize)
+setTimeout(enforceNoMismatch, 800);
+// And occasionally afterwards (handles edge cases without spamming)
+setInterval(enforceNoMismatch, 5000);
 
 /* ===== OVERLAY CLOSE ===== */
 function closePanel() {
