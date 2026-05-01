@@ -109,7 +109,8 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
-const API_URL = "https://plant-disease-backend-f3cm.onrender.com";
+const API_URL = "https://web-production-d40b9e.up.railway.app";
+
 
 auth.onAuthStateChanged(user => {
   if (!user) {
