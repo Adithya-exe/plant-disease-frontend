@@ -181,17 +181,6 @@ const auth = firebase.auth();
 
 const API_URL = "https://web-production-d40b9e.up.railway.app";
 
-/* 🔐 Make auth survive refresh/incognito better */
-(async () => {
-  try {
-    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-  } catch (e) {
-    try {
-      await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
-    } catch (_) {}
-  }
-})();
-
 /* AUTH GUARD */
 function waitForAuth() {
   return new Promise(resolve => {
@@ -202,9 +191,21 @@ function waitForAuth() {
   });
 }
 
-auth.onAuthStateChanged(user => {
+// Wait for Firebase to finish restoring auth state before redirecting.
+async function initAuthGuard() {
+  try {
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  } catch (e) {
+    try {
+      await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+    } catch (_) {}
+  }
+
+  const user = await waitForAuth();
   if (!user) window.location.href = "/";
-});
+}
+
+initAuthGuard();
 
 /* CAMERA */
 navigator.mediaDevices.getUserMedia({ video: true })
