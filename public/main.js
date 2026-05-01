@@ -1,5 +1,5 @@
 import * as THREE from "https://unpkg.com/three@0.164.1/build/three.module.js";
-import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/controls/OrbitControls.js";
+import { OrbitControls } from "https://unpkg.com/three@0.164.1/examples/jsm/controls/OrbitControls.js";
 import { createButtonFireflyLayer } from './fireflies.js';
 import { createLeafSnowfall } from './snowfall.js';
 

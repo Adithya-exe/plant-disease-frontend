@@ -2,32 +2,115 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Camera</title>
+<title>Camera - PDD</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
 <style>
-body { font-family: Inter; background:#111; color:white; text-align:center; }
-.container { margin-top:50px; }
-video, img { width:300px; border-radius:15px; }
-button { margin:10px; padding:10px 20px; border-radius:20px; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Inter", sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background: url("./models/Material_diffuse.jpeg") no-repeat center center/cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  position: relative;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 20, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 0;
+}
+
+.container {
+  position: relative;
+  z-index: 10;
+  backdrop-filter: blur(30px);
+  background: rgba(255,255,255,0.05);
+  border-radius: 24px;
+  padding: 30px;
+  width: 420px;
+  text-align: center;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+video, img {
+  width: 100%;
+  border-radius: 18px;
+  margin-top: 15px;
+}
+
+img {
+  display: none;
+}
+
+.btn {
+  padding: 12px 26px;
+  border-radius: 30px;
+  border: none;
+  cursor: pointer;
+  margin: 5px;
+}
+
+.capture {
+  background: linear-gradient(135deg, #ff7e5f, #ff9966);
+  color: white;
+}
+
+.predict {
+  background: linear-gradient(135deg, #00c9a7, #00f2c3);
+  color: black;
+}
+
+#result {
+  margin-top: 20px;
+  color: #00ffab;
+}
+
+/* NEW */
+#remedyBox {
+  margin-top: 15px;
+  background: rgba(0,255,170,0.1);
+  padding: 12px;
+  border-radius: 12px;
+}
 </style>
 </head>
 
 <body>
 
 <div class="container">
-  <h2>Camera</h2>
+  <h2>📷 Smart Camera</h2>
 
   <video id="video" autoplay></video>
 
-  <br>
-
-  <button onclick="capture()">Capture</button>
-  <button onclick="predict()">Predict</button>
+  <div>
+    <button class="btn capture" onclick="capture()">Capture</button>
+    <button class="btn predict" onclick="predict()">Predict</button>
+  </div>
 
   <canvas id="canvas" style="display:none;"></canvas>
   <img id="preview">
 
   <p id="result"></p>
+
+  <!-- NEW REMEDY SECTION -->
+  <div id="remedyBox" style="display:none;">
+    <h4>🌱 Remedy</h4>
+    <p id="remedyText"></p>
+  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -35,7 +118,7 @@ button { margin:10px; padding:10px 20px; border-radius:20px; }
 
 <script>
 const firebaseConfig = {
-  apiKey: "YOUR_KEY",
+  apiKey: "YOUR_API_KEY",
   authDomain: "pdd-finalyear.firebaseapp.com",
 };
 
@@ -44,61 +127,100 @@ const auth = firebase.auth();
 
 const API_URL = "https://web-production-d40b9e.up.railway.app";
 
+auth.onAuthStateChanged(user => {
+  if (!user) {
+    alert("Login required");
+    window.location.href = "/";
+  }
+});
+
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const preview = document.getElementById("preview");
 const result = document.getElementById("result");
 
-function getUser() {
-  return new Promise(resolve => {
-    const unsub = auth.onAuthStateChanged(user => {
-      unsub();
-      resolve(user);
-    });
-  });
-}
+/* NEW */
+const remedyBox = document.getElementById("remedyBox");
+const remedyText = document.getElementById("remedyText");
 
-// AUTH GUARD
-(async () => {
-  const user = await getUser();
-  if (!user) window.location.href = "/";
-})();
-
-// CAMERA
 navigator.mediaDevices.getUserMedia({ video: true })
-  .then(stream => video.srcObject = stream);
+  .then(stream => video.srcObject = stream)
+  .catch(() => alert("Camera access denied"));
 
-// CAPTURE
 function capture() {
   const ctx = canvas.getContext("2d");
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
+
   ctx.drawImage(video, 0, 0);
-  preview.src = canvas.toDataURL("image/jpeg");
+
+  preview.src = canvas.toDataURL("image/jpeg", 0.8);
+  preview.style.display = "block";
 }
 
-// PREDICT
 async function predict() {
-  const user = await getUser();
-  if (!user) return;
+  const user = auth.currentUser;
 
-  if (!preview.src) return result.innerText = "Capture first";
+  if (!user) {
+    alert("Login required");
+    return;
+  }
 
-  const token = await user.getIdToken();
+  if (!preview.src) {
+    alert("Capture image first");
+    return;
+  }
 
-  const blob = await (await fetch(preview.src)).blob();
+  try {
+    result.innerText = "Waking server...";
+    remedyBox.style.display = "none";
 
-  const formData = new FormData();
-  formData.append("image", blob);
+    await fetch(`${API_URL}/warmup`);
 
-  const res = await fetch(`${API_URL}/predict`, {
-    method: "POST",
-    headers: { Authorization: "Bearer " + token },
-    body: formData
-  });
+    result.innerText = "Processing...";
 
-  const data = await res.json();
-  result.innerText = data.message || "Done";
+    const token = await user.getIdToken(true);
+    const blob = await (await fetch(preview.src)).blob();
+
+    const formData = new FormData();
+    formData.append("image", blob, "capture.jpg");
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
+
+    const res = await fetch(`${API_URL}/predict`, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token
+      },
+      body: formData,
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      result.innerText = "Error: " + (data.error || "Failed");
+      return;
+    }
+
+    result.innerText = data.message;
+
+    /* NEW */
+    remedyText.innerText = data.remedy;
+    remedyBox.style.display = "block";
+
+  } catch (err) {
+    if (err.name === "AbortError") {
+      result.innerText = "Request timeout";
+      return;
+    }
+
+    result.innerText = "Server error";
+    console.error(err);
+  }
 }
 </script>
 
